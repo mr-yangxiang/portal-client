@@ -1,0 +1,47 @@
+/* 定制化极客暗黑主题变量覆盖 */
+html.dark {
+  /* 重写主要色调为黑曜石深灰到纯黑 */
+  --el-bg-color: #121212;
+  --el-bg-color-page: #0a0a0a;
+  --el-bg-color-overlay: #1e1e1e;
+
+  /* 重写品牌主色调为荧光绿（可切换科技蓝） */
+  --el-color-primary: #00ffaa;
+  --el-color-primary-light-3: #4dffc2;
+  --el-color-primary-light-5: #80ffd5;
+  --el-color-primary-light-7: #b3ffe8;
+  --el-color-primary-light-9: #e6fff6;
+  --el-color-primary-dark-2: #00cc88;
+
+  /* 基础文字与线框调整 */
+  --el-text-color-primary: #e5e5e5;
+  --el-text-color-regular: #a3a3a3;
+  --el-border-color: #333333;
+  --el-border-color-light: #262626;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
+  /* 基础动画平滑过渡 */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 玻璃拟物化通用类 */
+.glass-panel {
+  background: rgba(30, 30, 30, 0.6) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* 微交互辅助类 */
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px 0 rgba(0, 255, 170, 0.15); /* 带有主题色的光晕 */
+}
