@@ -44,7 +44,8 @@
             <div class="toc-title">文章目录</div>
             <ul class="toc-list" v-if="tocItems.length > 0">
               <li v-for="(item, index) in tocItems" :key="index"
-                  :class="{ 'sub-item': item.level > 2 }">
+                  :class="{ 'sub-item': item.level > 2, 'active': activeIndex === index }"
+                  @click="scrollToHeading(index)">
                 {{ item.text }}
               </li>
             </ul>
@@ -63,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { Back, User, Calendar, View, Star, Share } from '@element-plus/icons-vue'
 import { getArticleDetail } from '@/api/modules/article'
@@ -90,25 +91,73 @@ const parsedTags = computed(() => {
   return []
 })
 
-// 从文章 Markdown 内容中提取标题，生成目录
+// 从文章 HTML 内容中提取标题，生成目录
 const tocItems = computed(() => {
   const content = article.value.content
   if (!content) return []
   
   const items = []
-  // 匹配 ## 和 ### 标题
-  const lines = content.split('\n')
-  for (const line of lines) {
-    const match = line.match(/^(#{2,3})\s+(.+)/)
-    if (match) {
+  // 全局匹配 <h2> 和 <h3> 标签，捕获标签级别与内部文本
+  const reg = /<(h2|h3)[^>]*>([\s\S]*?)<\/h[23]>/gi
+  const matches = [...content.matchAll(reg)]
+  matches.forEach(match => {
+    const level = match[1].toLowerCase() === 'h2' ? 2 : 3
+    const text = match[2].replace(/<[^>]+>/g, '').trim()
+    if (text) {
       items.push({
-        level: match[1].length,
-        text: match[2].trim()
+        level,
+        text
       })
     }
-  }
+  })
   return items
 })
+
+const activeIndex = ref(0)
+let observer = null
+
+// 设置标题可见性监听器，用于同步高亮目录项
+const setupHeadingObserver = () => {
+  if (observer) {
+    observer.disconnect()
+  }
+
+  // 使用 setTimeout 确保 DOM 已经由 v-html 渲染完成
+  setTimeout(() => {
+    const container = document.querySelector('.markdown-body')
+    if (!container) return
+    const headings = container.querySelectorAll('h2, h3')
+    if (headings.length === 0) return
+
+    observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const index = Array.from(headings).indexOf(entry.target)
+          if (index !== -1) {
+            activeIndex.value = index
+          }
+        }
+      })
+    }, {
+      rootMargin: '-80px 0px -70% 0px', // 当标题进入顶部 80px 以下且在视口上部时激活
+      threshold: 0
+    })
+
+    headings.forEach((heading) => {
+      observer.observe(heading)
+    })
+  }, 100)
+}
+
+// 点击目录项平滑滚动到对应的标题位置
+const scrollToHeading = (index) => {
+  const container = document.querySelector('.markdown-body')
+  if (!container) return
+  const headings = container.querySelectorAll('h2, h3')
+  if (headings[index]) {
+    headings[index].scrollIntoView({ behavior: 'smooth' })
+  }
+}
 
 const fetchDetail = async () => {
   try {
@@ -117,6 +166,7 @@ const fetchDetail = async () => {
     const res = await getArticleDetail(id)
     if (res.data) {
       article.value = res.data
+      setupHeadingObserver()
     }
   } catch (e) {
     console.error('文章详情获取失败:', e)
@@ -126,6 +176,12 @@ const fetchDetail = async () => {
 onMounted(() => {
   fetchDetail()
   recordVisit({ page_path: `/article/${route.params.id}` }).catch(() => {})
+})
+
+onUnmounted(() => {
+  if (observer) {
+    observer.disconnect()
+  }
 })
 
 // 复制链接功能
@@ -243,11 +299,17 @@ const handleShare = async () => {
 
   .markdown-glass-wrapper {
     :deep(.el-card__body) { padding: 40px; }
+    :deep(.markdown-body) {
+      h2, h3 {
+        scroll-margin-top: 80px;
+      }
+    }
   }
 }
 
 .toc-sidebar {
   width: 260px;
+  align-self: stretch;
   
   .sticky-wrapper {
     position: sticky;

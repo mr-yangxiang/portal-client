@@ -12,9 +12,10 @@ const http = axios.create({
 // 请求拦截器
 http.interceptors.request.use(
   config => {
-    // 从 pinia 获取 token
     const userStore = useUserStore()
-    if (userStore.token) {
+    // 只有当访问后台管理相关页面（当前路由以 /admin 开头）时才携带 token
+    const isAdminPage = router.currentRoute.value?.path?.startsWith('/admin')
+    if (userStore.token && isAdminPage) {
       // 后端返回的 token 可能已包含 Bearer 前缀
       config.headers.Authorization = userStore.token.startsWith('Bearer') 
         ? userStore.token 
@@ -39,8 +40,13 @@ http.interceptors.response.use(
       if (res.message && res.message.includes('身份认证失败')) {
         const userStore = useUserStore()
         userStore.clearToken()
-        ElMessage.warning('登录状态已过期，请重新登录')
-        router.push('/admin/login')
+        
+        // 只有在后台页面时才给出提示并跳转
+        const isAdminPage = router.currentRoute.value?.path?.startsWith('/admin')
+        if (isAdminPage) {
+          ElMessage.warning('登录状态已过期，请重新登录')
+          router.push('/admin/login')
+        }
         return Promise.reject(new Error(res.message))
       }
       ElMessage.error(res.message || 'Error')
@@ -55,9 +61,13 @@ http.interceptors.response.use(
         // 未授权或 Token 过期
         const userStore = useUserStore()
         userStore.clearToken()
-        ElMessage.warning('登录状态已过期，请重新登录')
-        // 跳转到登录页
-        router.push('/admin/login')
+        
+        // 只有在后台页面时才给出提示并跳转
+        const isAdminPage = router.currentRoute.value?.path?.startsWith('/admin')
+        if (isAdminPage) {
+          ElMessage.warning('登录状态已过期，请重新登录')
+          router.push('/admin/login')
+        }
       } else {
         ElMessage.error(error.response.data.message || 'Server Error')
       }
